@@ -1,0 +1,10 @@
+{
+  "name": "com.tesseract.audio",
+  "displayName": "Tesseract Audio",
+  "version": "1.0.0",
+  "unity": "6000.0",
+  "description": "Audio management system with BGM/SFX, AudioMixer integration, category-based limiting, weighted selection, and fade support.",
+  "author": { "name": "Tesseract Studio" },
+  "dependencies": { "com.tesseract.core": "1.1.0" },
+  "keywords": ["audio", "sound", "bgm", "sfx", "mixer"]
+}
