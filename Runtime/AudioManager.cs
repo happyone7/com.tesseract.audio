@@ -14,7 +14,10 @@ namespace Tesseract.Audio
         private AudioSource _uiSfxSource;
         private AudioSource _extraSource;
 
-        private Dictionary<AudioCategory, AudibleClipList> m_PlayingAudios = new Dictionary<AudioCategory, AudibleClipList>();
+        private Dictionary<AudioCategory, AudibleClipList> _playingAudios = new Dictionary<AudioCategory, AudibleClipList>();
+
+        private bool _initialized;
+        private float _volumeBeforeMute = 0f;
 
         protected override void Awake()
         {
@@ -24,6 +27,13 @@ namespace Tesseract.Audio
 
         public void Init(AudioMixerConfig config = null)
         {
+            if (_initialized)
+            {
+                if (config != null)
+                    _config = config;
+                return;
+            }
+
             _config = config != null ? config : Resources.Load<AudioMixerConfig>("Audio/AudioMixerConfig");
 
             if (_config == null)
@@ -36,6 +46,7 @@ namespace Tesseract.Audio
             _gameSfxSource = CreateAudioSource("GameSFX", _config.gameSfxMixerGroup);
             _uiSfxSource = CreateAudioSource("UI_SFX", _config.uiSfxMixerGroup);
             _extraSource = CreateAudioSource("Extra", _config.extraMixerGroup);
+            _initialized = true;
         }
 
         private AudioSource CreateAudioSource(string name, AudioMixerGroup mixerGroup, bool loop = false)
@@ -51,7 +62,7 @@ namespace Tesseract.Audio
 
         protected void Update()
         {
-            foreach (var b in m_PlayingAudios.Values)
+            foreach (var b in _playingAudios.Values)
                 b.UpdateAudibles(Time.realtimeSinceStartup);
         }
 
@@ -83,14 +94,15 @@ namespace Tesseract.Audio
 
         public void MuteAll()
         {
-            if (_config?.gameMixer != null)
-                _config.gameMixer.SetFloat(_config.masterVolumeParameter, -80f);
+            if (_config?.gameMixer == null) return;
+            _config.gameMixer.GetFloat(_config.masterVolumeParameter, out _volumeBeforeMute);
+            _config.gameMixer.SetFloat(_config.masterVolumeParameter, -80f);
         }
 
         public void UnmuteAll()
         {
-            if (_config?.gameMixer != null)
-                _config.gameMixer.SetFloat(_config.masterVolumeParameter, 0f);
+            if (_config?.gameMixer == null) return;
+            _config.gameMixer.SetFloat(_config.masterVolumeParameter, _volumeBeforeMute);
         }
 
         private string GetVolumeParameter(ESoundType type)
@@ -128,10 +140,10 @@ namespace Tesseract.Audio
 
         public void OnPlayOneShot(AudioCategory category, AudioClip clip)
         {
-            if (!m_PlayingAudios.ContainsKey(category))
-                m_PlayingAudios.Add(category, new AudibleClipList(category.MaxAudible));
+            if (!_playingAudios.ContainsKey(category))
+                _playingAudios.Add(category, new AudibleClipList(category.MaxAudible));
 
-            m_PlayingAudios[category].AddClip(Time.realtimeSinceStartup + clip.length);
+            _playingAudios[category].AddClip(Time.realtimeSinceStartup + clip.length);
         }
 
         #endregion
@@ -140,6 +152,8 @@ namespace Tesseract.Audio
 
         public void PlayBgm(AudioClip clip, float volume, bool overrideSameClip = true, bool loop = true)
         {
+            if (clip == null) return;
+
             if (overrideSameClip && _bgmSource.clip != null)
             {
                 if (_bgmSource.clip == clip || _bgmSource.clip.name == clip.name)
@@ -167,7 +181,7 @@ namespace Tesseract.Audio
 
         public bool IsCategoryFullPlaying(AudioCategory category)
         {
-            if (m_PlayingAudios.TryGetValue(category, out AudibleClipList list))
+            if (_playingAudios.TryGetValue(category, out AudibleClipList list))
                 return list.IsFull();
             return false;
         }

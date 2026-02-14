@@ -11,6 +11,7 @@ namespace Tesseract.Audio
         public AudioClipPlayConfig CurrentClipOrNull { get; protected set; }
         public AudioSource AudioSource { get; private set; }
         public bool IsPaused { get; protected set; }
+        private float _currentClipVolume = 1f;
 
         public void Initialize(AudioSource source)
         {
@@ -21,7 +22,7 @@ namespace Tesseract.Audio
         {
             GlobalVolume = globalVolume;
             if (CurrentClipOrNull != null && AudioSource != null)
-                AudioSource.volume = GlobalVolume * CurrentClipOrNull.Volume * Progress;
+                AudioSource.volume = GlobalVolume * _currentClipVolume * Progress;
         }
 
         public void PlayWithFadeOutIn(AudioClipPlayConfig clip)
@@ -30,6 +31,7 @@ namespace Tesseract.Audio
             if (IsPaused)
             {
                 CurrentClipOrNull = clip;
+                _currentClipVolume = clip.Volume;
                 return;
             }
             StopAllCoroutines();
@@ -40,7 +42,7 @@ namespace Tesseract.Audio
         {
             if (AudioSource == null) return;
             StopAllCoroutines();
-            StartCoroutine(FadeOut(0));
+            StartCoroutine(FadeOut());
         }
 
         public void PauseWithFade()
@@ -48,7 +50,7 @@ namespace Tesseract.Audio
             if (AudioSource == null || IsPaused) return;
             IsPaused = true;
             StopAllCoroutines();
-            StartCoroutine(FadeOut(0));
+            StartCoroutine(FadeOut());
         }
 
         public void ResumeWithFade()
@@ -56,14 +58,16 @@ namespace Tesseract.Audio
             if (AudioSource == null || !IsPaused) return;
             IsPaused = false;
             if (CurrentClipOrNull == null) return;
+            _currentClipVolume = CurrentClipOrNull.Volume;
             StopAllCoroutines();
-            StartCoroutine(FadeIn(CurrentClipOrNull.Volume));
+            StartCoroutine(FadeIn(_currentClipVolume));
         }
 
         private IEnumerator FadeOutAndIn(AudioClipPlayConfig clip)
         {
-            yield return StartCoroutine(FadeOut(0));
+            yield return StartCoroutine(FadeOut());
             CurrentClipOrNull = clip;
+            _currentClipVolume = clip.Volume;
             AudioSource.clip = clip.Clip;
             AudioSource.Play();
             yield return StartCoroutine(FadeIn(clip.Volume));
@@ -71,26 +75,28 @@ namespace Tesseract.Audio
 
         private IEnumerator FadeIn(float targetVolume)
         {
-            Progress = GlobalVolume > 0 ? Mathf.Clamp(AudioSource.volume / GlobalVolume, 0f, 1f) : 0f;
+            _currentClipVolume = targetVolume;
+            Progress = GlobalVolume > 0 ? Mathf.Clamp(AudioSource.volume / (GlobalVolume * targetVolume), 0f, 1f) : 0f;
             float fadeInSpeed = 1 / FadeTime;
             while (Progress < 1)
             {
                 Progress += fadeInSpeed * Time.deltaTime;
-                AudioSource.volume = GlobalVolume * targetVolume * Progress;
+                AudioSource.volume = GlobalVolume * targetVolume * Mathf.Clamp01(Progress);
                 yield return null;
             }
             Progress = 1;
             AudioSource.volume = GlobalVolume * targetVolume;
         }
 
-        private IEnumerator FadeOut(float targetVolume)
+        private IEnumerator FadeOut()
         {
-            Progress = GlobalVolume > 0 ? Mathf.Clamp(AudioSource.volume / GlobalVolume, 0f, 1f) : 0f;
+            float startVolume = AudioSource.volume;
+            Progress = 1f;
             float fadeOutSpeed = 1 / FadeTime;
             while (Progress > 0)
             {
                 Progress -= fadeOutSpeed * Time.deltaTime;
-                AudioSource.volume = GlobalVolume * targetVolume * Progress;
+                AudioSource.volume = startVolume * Mathf.Clamp01(Progress);
                 yield return null;
             }
             Progress = 0;

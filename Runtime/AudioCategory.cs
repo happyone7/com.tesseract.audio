@@ -1,3 +1,4 @@
+using Tesseract.Core;
 using UnityEngine;
 
 namespace Tesseract.Audio
@@ -11,11 +12,13 @@ namespace Tesseract.Audio
 
         public bool IsFull()
         {
+            if (!Singleton<AudioManager>.HasInstance) return true;
             return AudioManager.Instance.IsCategoryFullPlaying(this);
         }
 
         public void AddCount(AudioClip clip)
         {
+            if (!Singleton<AudioManager>.HasInstance) return;
             AudioManager.Instance.OnPlayOneShot(this, clip);
         }
     }
