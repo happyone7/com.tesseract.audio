@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.1.1] - 2026-02-15
+### Fixed
+- 모든 파일/폴더에 .meta 파일 추가 (Unity immutable folder 경고 해결)
+
 ## [1.1.0] - 2026-02-14
 ### Fixed
 - FadingAudioSource: FadeOut()이 즉시 음소거되던 버그 수정 (startVolume 기반 보간으로 변경)
